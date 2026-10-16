@@ -1,0 +1,14 @@
+import {chromium} from '@playwright/test';
+import fs from 'node:fs/promises';
+const browser=await chromium.launch({headless:true,executablePath:'C:/Users/jvgsl/AppData/Local/ms-playwright/chromium-1243/chrome-win64/chrome.exe'});
+const results=[];const errors=[];
+for(const width of [360,390,768,1440]){for(const reducedMotion of ['no-preference','reduce']){
+const page=await browser.newPage({viewport:{width,height:1000},reducedMotion});page.on('pageerror',e=>errors.push(e.message));await page.goto('http://localhost:5173');await page.locator('h1').waitFor();
+const source=await fs.readFile('CONTEUDO.md','utf8');const paragraphs=source.split('## Notas de implementação')[0].split('\n\n').filter(p=>/^(Sou |Tenho |Possuo |Considero-me |Realizo |A Gestalt|Atendimentos |Processo de |“)/.test(p));
+for(const text of paragraphs){if(!await page.getByText(text,{exact:true}).isVisible())throw Error('Texto inacessível: '+text)}
+const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);if(overflow)throw Error('Overflow '+width);
+await page.locator('.flip-button').scrollIntoViewIfNeeded();await page.waitForTimeout(150);const previous=await page.locator('.flip-button').getAttribute('aria-pressed');await page.locator('.flip-button').click();await page.waitForTimeout(reducedMotion==='reduce'?50:1000);if(await page.locator('.flip-button').getAttribute('aria-pressed')===previous)throw Error('Cartão');
+await page.locator('summary').filter({hasText:'Para quem é a psicoterapia?'}).click();if(!await page.getByText('O atendimento é voltado a adolescentes e adultos.',{exact:true}).isVisible())throw Error('FAQ');
+if(width<700){await page.evaluate(()=>scrollTo(0,0));await page.getByRole('button',{name:'Menu ☰'}).click();await page.getByRole('link',{name:'Atendimentos',exact:true}).click();if(await page.getByRole('button',{name:'Menu ☰'}).getAttribute('aria-expanded')!=='false')throw Error('Menu');}
+if(await page.locator('.flip-button').getAttribute('aria-pressed')==='true')await page.locator('.flip-button').click();await page.waitForTimeout(reducedMotion==='reduce'?50:1000);await page.evaluate(()=>scrollTo(0,document.body.scrollHeight));await page.evaluate(()=>scrollTo(0,0));if(reducedMotion==='no-preference'){await page.waitForTimeout(700);await page.screenshot({path:'docs/preview-'+width+'.png',fullPage:true});}results.push({width,reducedMotion,overflow,paragraphs:paragraphs.length});await page.close();}}
+await browser.close();if(errors.length)throw Error(errors.join('\n'));await fs.writeFile('docs/browser-results.json',JSON.stringify(results,null,2));console.log(JSON.stringify(results,null,2));
